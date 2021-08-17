@@ -57,21 +57,7 @@ def create_account():
     return card_number, pin
 
 
-def actions(action):
-    if action == '0':
-        print('\nBye!')
-        exit()
-    elif action == '1':
-        card_number, pin = create_account()
-        print('\nYour card has been created')
-        print('Your card number:')
-        print(card_number)
-        print('Your card PIN:')
-        print(pin + '\n')
-        actions(start_prompt())
-    elif action == '2':
-        login_prompt()
-
+# Flow of the program
 
 def start_prompt():
     print('1. Create an account')
@@ -102,6 +88,26 @@ def logged_in(account_id):
     print('5. Log out')
     print('0. Exit')
     action = input()
+    logged_in_actions(action, account_id)
+
+
+def actions(action):
+    if action == '0':
+        print('\nBye!')
+        exit()
+    elif action == '1':
+        card_number, pin = create_account()
+        print('\nYour card has been created')
+        print('Your card number:')
+        print(card_number)
+        print('Your card PIN:')
+        print(pin + '\n')
+        actions(start_prompt())
+    elif action == '2':
+        login_prompt()
+
+
+def logged_in_actions(action, account_id):
     if action == '1':
         show_balance(account_id)
     elif action == '2':
@@ -123,11 +129,58 @@ def logged_in(account_id):
         actions(start_prompt())
 
 
+# 1
 def show_balance(account_id):
-    cur.execute('SELECT balance FROM card WHERE id = {}'.format(account_id))
-    balance = cur.fetchall()[0][0]
+    balance = get_balance(account_id)
     print('\nBalance: ' + str(balance) + '\n')
     logged_in(account_id)
+
+
+# 2
+def add_income(account_id):
+    print('\nEnter income:')
+    income = int(input())
+    print('Income was added!\n')
+    update_balance(account_id, income)
+
+
+# 3
+# Transfers specified amount from account identified by passed id to an account
+# which card number is given
+def do_transfer(sender_id):
+    print('\nTransfer')
+    print('Enter card number:')
+    receiver_card_number = input()
+
+    if luhn_check(receiver_card_number):
+        if account_exist(receiver_card_number):
+            print('Enter how much money you want to transfer:')
+            amount = int(input())
+            if get_balance(sender_id) >= amount:
+                print('Success!')
+                update_balance(get_id(receiver_card_number), amount)
+                update_balance(sender_id, -amount)
+            else:
+                print('Not enough money!\n')
+        else:
+            print('Such a card does not exist.\n')
+    else:
+        print('Probably you made a mistake in the card number. Please try again!\n')
+
+
+# 4
+# Deletes all records of specified by id account from database
+def close_account(account_id):
+    cur.execute('DELETE FROM card WHERE id={}'.format(account_id))
+    conn.commit()
+    print('\nThe account has been closed!\n')
+
+
+# Helper functions
+
+def update_balance(account_id, amount):
+    cur.execute('UPDATE card SET balance = {} WHERE id = {}'.format(amount + get_balance(account_id), account_id))
+    conn.commit()
 
 
 def validate(card_number, pin):
@@ -153,6 +206,7 @@ def account_exist(card_number):
         return False
 
 
+# Checks validity of passed account number
 def luhn_check(card_number):
     last_digit = int(card_number[-1])
     card_number = card_number[6:-1]
@@ -175,43 +229,7 @@ def get_balance(account_id):
     return cur.fetchall()[0][0]
 
 
-def add_income(account_id):
-    print('\nEnter income:')
-    income = int(input())
-    print('Income was added!\n')
-    update_balance(account_id, income)
-
-
-def update_balance(account_id, amount):
-    cur.execute('UPDATE card SET balance = {} WHERE id = {}'.format(amount + get_balance(account_id), account_id))
-    conn.commit()
-
-
-def close_account(account_id):
-    cur.execute('DELETE FROM card WHERE id={}'.format(account_id))
-    conn.commit()
-    print('\nThe account has been closed!\n')
-
-
-def do_transfer(card_id):
-    print('\nTransfer')
-    print('Enter card number:')
-    card_number = input()
-    if luhn_check(card_number):
-        if account_exist(card_number):
-            print('Enter how much money you want to transfer:')
-            amount = int(input())
-            if get_balance(card_id) >= amount:
-                print('Success!')
-                update_balance(get_id(card_number), amount)
-                update_balance(card_id, -amount)
-            else:
-                print('Not enough money!\n')
-        else:
-            print('Such a card does not exist.\n')
-    else:
-        print('Probably you made a mistake in the card number. Please try again!\n')
-
+# Start of program's execution
 
 def main():
     actions(start_prompt())
